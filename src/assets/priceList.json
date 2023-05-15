@@ -1,0 +1,30 @@
+{
+    "1": {
+        "messages": 1000,
+        "money": 99
+    },
+    "2": {
+        "messages": 2500,
+        "money": 250
+    },
+    "3": {
+        "messages": 5000,
+        "money": 450
+    },
+    "4": {
+        "messages": 10000,
+        "money": 750
+    },
+    "5": {
+        "messages": 20000,
+        "money": 1300
+    },
+    "6": {
+        "messages": 50000,
+        "money": 3200
+    },
+    "7": {
+        "messages": 100000,
+        "money": 5000
+    }
+}

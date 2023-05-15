@@ -4,6 +4,8 @@ import { Update } from "telegraf/typings/core/types/typegram";
 import { myState } from "../state";
 import { handleStart } from "./handleStart";
 import {isMember} from './validation';
+import fs from 'fs';
+import priceList from '../assets/priceList.json';
 
 let bot:Telegraf<Context<Update>>;
 let botPhoto:string;
@@ -16,37 +18,39 @@ export const initBuy = (b:Telegraf<Context<Update>>)=>{
     tronPhoto = process.env.TronPhoto as string;
     tronUri = process.env.TronUri as string;
     bot.action('buy',async (ctx)=>{
-        myState.messagesToSend = 0;
-        myState.numbers.length =  0;
+        let state:myState = new myState(JSON.parse(fs.readFileSync(`./memory/${ctx.update.callback_query.from.id}.json`).toString()));
+        state.setQuary("default");
+        state.messagesToSend = 0;
+        state.numbers.length =  0;
+        state.updateJson();
         await ctx.deleteMessage();
         //creator" | "administrator" | "member" | "restricted" | "left" | "kicked        
-        const isMemberFlag:string = await (await isMember(ctx.update.callback_query.from.id)).split(':')[0];
+        const isMemberFlag:string = await (await isMember(ctx.update.callback_query.from)).split(':')[0];
         if(isMemberFlag === "restricted" || isMemberFlag === "left")
             {
                 handleStart(ctx,isMemberFlag);
                 return;
             }
 
-        const text:string =  `*👇 מחירון מפורט הודעות אסמס 👇*
+            const text:string =  `*👇 מחירון מפורט הודעות אסמס 👇*
 
-📩⚡️ 1,000 הודעות - 90 ₪
-📩⚡️ 2,500 הודעות - 200 ₪
-📩⚡️ 5,000 הודעות - 370 ₪
-📩⚡️ 10,000 הודעות - 750 ₪
-📩⚡️ 20,000 הודעות - 1,300 ₪
-📩⚡️ 50,000 הודעות - 3,200 ₪
-📩⚡️ 100,000 הודעות מבצע חם -5,000₪
-        
-*חשוב להדגיש:* לאחר קניית חבילה הודעות - היתרה שלכם נשמרת ברובוט ואתם לא חייבים להשתמש בכל היתרה שלכם בפעם אחת.`;
+📩⚡️ ${priceList['1'].messages} הודעות - ${priceList['1'].money} ₪
+📩⚡️ ${priceList['2'].messages} הודעות - ${priceList['2'].money} ₪
+📩⚡️ ${priceList['3'].messages} הודעות - ${priceList['3'].money} ₪
+📩⚡️ ${priceList['4'].messages} הודעות - ${priceList['4'].money} ₪
+📩⚡️ ${priceList['5'].messages} הודעות - ${priceList['5'].money} ₪
+📩⚡️ ${priceList['6'].messages} הודעות - ${priceList['6'].money} ₪
+📩⚡️ ${priceList['7'].messages} הודעות מבצע חם - ${priceList['7'].money} ₪
+                    
+            *חשוב להדגיש:* לאחר קניית חבילה הודעות - היתרה שלכם נשמרת ברובוט ואתם לא חייבים להשתמש בכל היתרה שלכם בפעם אחת.`;
         ctx.replyWithPhoto({source:botPhoto}
             ,{caption:text,parse_mode:"Markdown",
                 reply_markup:{
                     inline_keyboard:[   
-                        [{text:`1,000`, callback_data:"transaction&1"},{text:`2,500`, callback_data:"transaction&2"}],                    
-                        [{text:`5,000`, callback_data:"transaction&3"},{text:`10,000`, callback_data:"transaction&4"}],                    
-                        [{text:`20,000`, callback_data:"transaction&5"},{text:`50,000`, callback_data:"transaction&6"}],                    
-                        [{text:`100,000`, callback_data:"transaction&7"}],                       
-                        [{text:`ליותר 🔺`, callback_data:"joined"}],                       
+                        [{text:`${priceList['1'].messages}`, callback_data:"transaction&1"},{text:`${priceList['2'].messages}`, callback_data:"transaction&2"}],                    
+                        [{text:`${priceList['3'].messages}`, callback_data:"transaction&3"},{text:`${priceList['4'].messages}`, callback_data:"transaction&4"}],                    
+                        [{text:`${priceList['5'].messages}`, callback_data:"transaction&5"},{text:`${priceList['6'].messages}`, callback_data:"transaction&6"}],                    
+                        [{text:`${priceList['7'].messages}`, callback_data:"transaction&7"}],                                                                  
                         [{text:`חזרה 🔙`, callback_data:"joined"}],                       
                     ]
                 }        
@@ -55,6 +59,7 @@ export const initBuy = (b:Telegraf<Context<Update>>)=>{
     });
 
     bot.action(/transaction&[1-8]/,async(ctx)=>{
+        let state:myState = new myState(JSON.parse(fs.readFileSync(`./memory/${ctx.update.callback_query.from.id}.json`).toString()));
         const data = ctx.callbackQuery.data?.split('&')[1]; 
         const currencyRes = await axios.get("https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=ils");
         if(currencyRes.status!=200)
@@ -63,129 +68,120 @@ export const initBuy = (b:Telegraf<Context<Update>>)=>{
         {
             let money:number = currencyRes.data["tether"]["ils"];           
             const tronUriText:string = "`" + tronUri +"`"
-            const text_1:string = `📌 כדי לבצע תשלום, שלח ביטקוין לכתובת הבאה. (הכסף יתווסף לחשבונך לאחר אישור).\n`
+            const text_1:string = `📌 כדי לבצע תשלום, שלח Usdt לכתובת הבאה. (הכסף יתווסף לחשבונך לאחר הזנת קוד העסקה).\n *ודא שאתה נמצא על רשת Tron\n*`
             const text_3:string =`\n🔻 *כתובת:*
-${tronUriText}\n\n\n*⚠️ שים לב: אם תשלח סכום אחר או תכלול את עמלת העסקה בסכום זה, המערכת תתעלם מהתשלום! לאחר שעת המתנה העסקה מבוטלת!*`;
+${tronUriText}\n\n\n*⚠️ שים לב: אם תשלח סכום אחר או תכלול את עמלת העסקה בסכום זה, המערכת תתעלם מהתשלום!*`;
             switch (data) {
-                case "1":
-                   const text_2:string = "💰 *סכום:*\n" + "`"+(Math.round((1000/money + Number.EPSILON) * 100) / 100).toString()+ "` (Tether)"
-                   await ctx.replyWithPhoto({source:tronPhoto},{caption:text_1 + text_2 + text_3,parse_mode:"Markdown"}).then(res=> message_id=res.message_id);
-                   handleCrypto(Math.round((1000/money + Number.EPSILON) * 100) / 100,ctx);
-                    // ctx.reply("1,000 הודעות חדשות").then(()=>handleStart(ctx));               
-                    // if(myState.client?.Messages)
-                    //     {
-                    //         myState.client.Messages += 1000; 
-                    //         myState.client.Money += 90;
-                    //     }       
-                    // if(myState.client?._Messages)
-                    //     myState.client._Messages += 1000;
-                    
-                    // myState.update();        
-                    break;
+                case "1":{
+                    state.needToPay = Math.round((priceList[1].money/money + Number.EPSILON) * 100) / 100;
+                    state.needToPayCase = 1;
+                    const text_2:string = "💰 *סכום:*\n" + "`"+(state.needToPay).toString()+ "` (Usdt)"
+                    await ctx.replyWithPhoto({source:tronPhoto},{caption:text_1 + text_2 + text_3,parse_mode:"Markdown",reply_markup:{
+                        inline_keyboard:[   
+                            [{text:`אישור ✅`, callback_data:`handleCrypto&${state.needToPay}`}],                                                                                               
+                            [{text:`ביטול 🔙`, callback_data:"1back"}],                       
+                        ]
+                    }}).then((res:any)=> state.deleteId.push(res.message_id));                      
+                    break;}
             
-                case "2":
-                    ctx.reply("2,500 הודעות חדשות").then(()=>handleStart(ctx));
-                    if(myState.client?.Messages)
-                       { 
-                         myState.client.Messages += 2500;  
-                         myState.client.Money += 200;
-                       }      
-                    if(myState.client?._Messages)
-                        myState.client._Messages += 2500;
-                
-                    myState.update();               
-                    break;
-                case "3":
-                    ctx.reply("5,000 הודעות חדשות").then(()=>handleStart(ctx));        
-                    if(myState.client?.Messages)
-                       {
-                         myState.client.Messages += 5000; 
-                         myState.client.Money += 370;
-                       }       
-                    if(myState.client?._Messages)
-                        myState.client._Messages += 5000;
-                
-                    myState.update();       
-                    break;
+                case "2":{
+                    state.needToPay = Math.round((priceList[2].money/money + Number.EPSILON) * 100) / 100;
+                    state.needToPayCase = 2;
+                    const text_2:string = "💰 *סכום:*\n" + "`"+(state.needToPay).toString()+ "` (Usdt)"
+                    await ctx.replyWithPhoto({source:tronPhoto},{caption:text_1 + text_2 + text_3,parse_mode:"Markdown",reply_markup:{
+                        inline_keyboard:[   
+                            [{text:`אישור ✅`, callback_data:`handleCrypto&${state.needToPay}`}],                                                                                               
+                            [{text:`ביטול 🔙`, callback_data:"1back"}],                       
+                        ]
+                    }}).then((res:any)=> state.deleteId.push(res.message_id));                                   
+                    break;}
+                case "3":{
+                    state.needToPay = Math.round((priceList[3].money/money + Number.EPSILON) * 100) / 100;
+                    state.needToPayCase = 3;
+                    const text_2:string = "💰 *סכום:*\n" + "`"+(state.needToPay).toString()+ "` (Usdt)"
+                    await ctx.replyWithPhoto({source:tronPhoto},{caption:text_1 + text_2 + text_3,parse_mode:"Markdown",reply_markup:{
+                        inline_keyboard:[   
+                            [{text:`אישור ✅`, callback_data:`handleCrypto&${state.needToPay}`}],                                                                                               
+                            [{text:`ביטול 🔙`, callback_data:"1back"}],                       
+                        ]
+                    }}).then((res:any)=> state.deleteId.push(res.message_id));                               
+                    break;}
                 case "4":
-                    ctx.reply("10,000 הודעות חדשות").then(()=>handleStart(ctx));        
-                    if(myState.client?.Messages)
-                      { 
-                         myState.client.Messages += 10000; 
-                         myState.client.Money += 750;
-                      }      
-                    if(myState.client?._Messages)
-                        myState.client._Messages += 10000;
-                
-                    myState.update();       
-                    break;
+                   {
+                     state.needToPay = Math.round((priceList[4].money/money + Number.EPSILON) * 100) / 100;
+                     state.needToPayCase = 4;
+                    const text_2:string = "💰 *סכום:*\n" + "`"+(state.needToPay).toString()+ "` (Usdt)"
+                    await ctx.replyWithPhoto({source:tronPhoto},{caption:text_1 + text_2 + text_3,parse_mode:"Markdown",reply_markup:{
+                        inline_keyboard:[   
+                            [{text:`אישור ✅`, callback_data:`handleCrypto&${state.needToPay}`}],                                                                                               
+                            [{text:`ביטול 🔙`, callback_data:"1back"}],                       
+                        ]
+                    }}).then((res:any)=> state.deleteId.push(res.message_id));       
+                       
+                    break;}
                 case "5":
-                   ctx.reply("20,000 הודעות חדשות").then(()=>handleStart(ctx));        
-                   if(myState.client?.Messages)
-                    { 
-                        myState.client.Messages += 20000;
-                        myState.client.Money += 1300;
-                    }        
-                    if(myState.client?._Messages)
-                         myState.client._Messages += 20000;
-               
-                    myState.update();      
-                    break;
+                  { 
+                    state.needToPay = Math.round((priceList[5].money/money + Number.EPSILON) * 100) / 100;
+                    state.needToPayCase = 5;
+                  const text_2:string = "💰 *סכום:*\n" + "`"+(state.needToPay).toString()+ "` (Usdt)"
+                  await ctx.replyWithPhoto({source:tronPhoto},{caption:text_1 + text_2 + text_3,parse_mode:"Markdown",reply_markup:{
+                    inline_keyboard:[   
+                        [{text:`אישור ✅`, callback_data:`handleCrypto&${state.needToPay}`}],                                                                                               
+                        [{text:`ביטול 🔙`, callback_data:"1back"}],                       
+                    ]
+                }}).then((res:any)=> state.deleteId.push(res.message_id));         
+                    break;}
                 case "6":
-                    ctx.reply("50,000 הודעות חדשות").then(()=>handleStart(ctx));   
-                    if(myState.client?.Messages)
-                    {
-                         myState.client.Messages += 50000;
-                         myState.client.Money += 3200;
-                    }        
-                    if(myState.client?._Messages)
-                        myState.client._Messages += 50000;
-                
-                    myState.update();             
-                    break;
-                case "7":
-                    ctx.reply("100,000 הודעות חדשות").then(()=>handleStart(ctx)); 
-                    if(myState.client?.Messages)
-                        {
-                            myState.client.Messages += 100000;
-                            myState.client.Money += 5000;
-                        }        
-                    if(myState.client?._Messages)
-                        myState.client._Messages += 100000;               
-                    myState.update();           
-                    break;
+                    {      
+                        state.needToPay = Math.round((priceList[6].money/money + Number.EPSILON) * 100) / 100;
+                        state.needToPayCase = 6;
+                        const text_2:string = "💰 *סכום:*\n" + "`"+(state.needToPay).toString()+ "` (Usdt)"
+                        await ctx.replyWithPhoto({source:tronPhoto},{caption:text_1 + text_2 + text_3,parse_mode:"Markdown",reply_markup:{
+                            inline_keyboard:[   
+                                [{text:`אישור ✅`, callback_data:`handleCrypto&${state.needToPay}`}],                                                                                               
+                                [{text:`ביטול 🔙`, callback_data:"1back"}],                       
+                            ]
+                        }}).then((res:any)=> state.deleteId.push(res.message_id));           
+                    break;}
+                case "7":{
+                    state.needToPay = Math.round((priceList[7].money/money + Number.EPSILON) * 100) / 100;
+                    state.needToPayCase = 7;
+                    const text_2:string = "💰 *סכום:*\n" + "`"+(state.needToPay).toString()+ "` (Usdt)"
+                    await ctx.replyWithPhoto({source:tronPhoto},{caption:text_1 + text_2 + text_3,parse_mode:"Markdown",reply_markup:{
+                        inline_keyboard:[   
+                            [{text:`אישור ✅`, callback_data:`handleCrypto&${state.needToPay}`}],                                                                                               
+                            [{text:`ביטול 🔙`, callback_data:"1back"}],                       
+                        ]
+                    }}).then((res:any)=> state.deleteId.push(res.message_id));                             
+                    break;}
             }
         }   
-        
+        state.updateJson();
     })
-   
-}
-const handleCrypto = async(amount:number,ctx:any)=>{    
-    let min:number = 59;
-    let sec:number = 55;
-    await ctx.sendMessage(`⌚️*הזמן שנותר לך לשלם:* 60 דקות, 0 שניות 
-💡 *סטטוס התשלום:* ממתין לקבלת התשלום.
-הסטטוס מתעדכן מידי 5 שניות.`,{reply_to_message_id:message_id,parse_mode:"Markdown"}).then((res:any)=>message_id = res.message_id);
-    const checker = setInterval(async()=>{
-        const text:string = `⌚️*הזמן שנותר לך לשלם:* ${min} דקות, ${sec} שניות 
-💡 *סטטוס התשלום:* ממתין לקבלת התשלום.
-הסטטוס מתעדכן מידי 5 שניות.`
-    await bot.telegram.editMessageText((await ctx.getChat()).id,message_id,undefined,text,{parse_mode:"Markdown"});
-    if(min===0 && sec === 0)
-        {
-            await bot.telegram.editMessageText((await ctx.getChat()).id,message_id,undefined,"*העסקה בוטלה*",{parse_mode:"Markdown"});
-            clearInterval(checker);
-        }
-    else if(sec===0)
-    {
-        min--;
-        sec=50
-    }
-    else
-        sec-=5;
-    },5000)
-    
 
+   bot.action(/handleCrypto&*/,async (ctx)=>{
+    let state:myState = new myState(JSON.parse(fs.readFileSync(`./memory/${ctx.update.callback_query.from.id}.json`).toString()));
+    await ctx.reply("*לאחר שליחת התשלום אנא הקלד את קוד העסקה (hash code)*\n לביטול /cancel",{parse_mode:"Markdown"})
+    .then((res:any)=>state.deleteId.push(res.message_id)); 
+    const amount:number = Number(ctx.callbackQuery.data?.split('&')[1]); 
+    console.log(amount);
+    state.needToPay = amount * 1000000;
+    state.setQuary("paymentVerification");   
+    state.updateJson();
+   });
+
+   bot.action("1back", async(ctx)=>{
+    await ctx.deleteMessage();
+   })
 }
+// const handleCrypto = async(amount:number,ctx:any)=>{        
+//     await ctx.sendMessage(`האם ברצונך להמשיך`,{parse_mode:"Markdown", reply_markup:{
+//         inline_keyboard:[   
+//             [{text:`אישור ✅`, callback_data:`handleCrypto&${amount}`}],                                                                                               
+//             [{text:`ביטול 🔙`, callback_data:"joined"}],                       
+//         ]
+//     } }).then((res:any)=>myState.replyMessageId = res.message_id);
+     
+// }
 
 

@@ -5,7 +5,7 @@ import { initSettings } from "./handleSettings"
 import { initHandleStart } from "./handleStart"
 import { initStartSendMessages } from "./handleStartSendMessages"
 import { initValidation } from "./validation"
-import { initMongoDb } from "../mongo"
+import { initMongoDb } from "../database/mongo/index";
 import { initAccount } from "./handleAccount"
 import { initPrice } from "./handlePrice"
 import { initBuy } from "./handleBuy"
@@ -15,42 +15,45 @@ import { isMember } from "./validation";
 import { initShowReviews } from "./administrator/handleShowReviews"
 import { initShowClientList } from "./administrator/handleClientsList"
 import { initMessageAll } from "./administrator/handleMessageAll"
+import { initLinks } from "./handleLink"
+import { initMySql } from "../database/mysql"
+import fs from 'fs'
 
 export const initAll =(b:Telegraf<Context<Update>>)=>{
    b.action("enterMore",async(ctx)=>{
+      let state:myState = new myState(JSON.parse(fs.readFileSync(`./memory/${ctx.update.callback_query.from.id}.json`).toString())); 
          await ctx.deleteMessage();
-         let text:string = `אנא הכנס קובץ עם ${myState.messagesToSend-myState.numbers.length} מספרים`
-         if(myState.quary==="manual")
-            text = `אנא הקלד ${myState.messagesToSend-myState.numbers.length} מספרים`;
+         let text:string = `אנא הכנס קובץ עם ${state.messagesToSend-state.numbers.length} מספרים`
+         if(state.quary==="manual")
+            text = `אנא הקלד ${state.messagesToSend-state.numbers.length} מספרים`;
          
          ctx.reply(text);
 
    })
 
-   b.action("continue",async(ctx)=>
-   {
-      myState.setQuary("default");
-      ctx.reply("התהליך מתקדם");
-   })
-   b.command('cancel',async(ctx)=>{       
+   b.command('cancel',async(ctx)=>{  
+      let state:myState = new myState(JSON.parse(fs.readFileSync(`./memory/${ctx.message.from.id}.json`).toString()));      
      
-      if(myState.quary!=="feedback")
+      if(state.quary!=="feedback")
          {
-          myState.reset();
+          state.reset();
           await ctx.deleteMessage();
-          handleStartMain(ctx,await isMember(ctx.message.from.id))
+          handleStartMain(ctx,await isMember(ctx.message.from))
       }
       else            
              
               ctx.deleteMessage(ctx.message.message_id).then(()=>ctx.deleteMessage(ctx.message.message_id-1)).finally(
                   async()=>{
-                      myState.reset();
-                      handleStartMain(ctx,await isMember(ctx.message.from.id))
+                      state.reset();
+                      handleStartMain(ctx,await isMember(ctx.message.from))
                   })
                        
   })
+  initMongoDb();
+  initMySql();
    initMessageAll(b);
    initValidation(b);
+   initLinks(b);
    initShowReviews(b);
    initShowClientList(b);
    initHandleStart(b);
@@ -58,7 +61,6 @@ export const initAll =(b:Telegraf<Context<Update>>)=>{
    initSettings(b);
    initFeedback(b); 
    initPrice(b);
-   initMongoDb();
    initBuy(b);
    initAccount(b);
 }
